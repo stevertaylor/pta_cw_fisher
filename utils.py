@@ -23,7 +23,7 @@ class Pulsar:
         design_matrix (jax.numpy.ndarray): Design matrix for the timing model.
     """
 
-    def __init__(self, name, toas, ra, dec, toaerrs=None, design_matrix=None, pdist=None):
+    def __init__(self, name, toas, ra, dec, toaerrs=None, pdist=None):
         """
         Initialize a Pulsar object.
 
@@ -46,7 +46,7 @@ class Pulsar:
             jnp.cos(dec) * jnp.sin(ra),
             jnp.sin(dec),
         ])
-        self.design_matrix = jnp.array(design_matrix)
+        #self.design_matrix = jnp.array(design_matrix)
         self.pdist = jnp.array(pdist)
 
     def __repr__(self):
