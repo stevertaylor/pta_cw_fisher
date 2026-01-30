@@ -35,7 +35,6 @@ The notebooks form a progression from initial exploration to optimized analysis:
 |----------|---------|
 | `tests.ipynb` | General unit tests for utility functions, Fisher matrix calculations, and CW signal models. |
 | `signal_tests.ipynb` | Validates CW signal generation by comparing face-on vs edge-on binary orientations and checking waveform properties. |
-| `sprite_tests.ipynb` | Exploratory analysis of SPRITE catalog data (massive black hole binaries), computing expected angular separations at PTA frequencies. |
 
 ## Getting Started
 
