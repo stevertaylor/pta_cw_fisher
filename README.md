@@ -1,69 +1,126 @@
 # PTA Continuous-Wave Fisher Analysis
 
-This repository contains tooling for exploring continuous gravitational-wave (CW) signals in pulsar timing array (PTA) data using JAX-backed likelihood evaluations and Fisher-matrix approximations. The code started as a port of ideas from `gabefreedman/etudes` and currently focuses on fast deterministic signal generation, parameter estimation utilities, and companion notebooks for experimentation.
+This repository explores sky-localization precision for continuous gravitational-wave (CW) sources in pulsar timing arrays (PTAs).
+The core approach evaluates **Fisher-matrix approximations** of the CW likelihood, implemented in JAX for automatic differentiation and GPU-friendly vectorization.
+Code heritage traces to `gabefreedman/etudes`.
+
+## Quick Start
+
+The **recommended entry point** is:
+
+```
+ring_pterm_vectorized_fixed.ipynb   ← production notebook
+```
+
+It relies on:
+
+| File | Role |
+|------|------|
+| `utils_vectorized_fixed.py` | JAX-vectorized signal model & Fisher routines (`PulsarBatch`, `get_delay_batch`, `compute_total_fisher`, etc.) |
+| `constants.py` | Physical constants (c, pc, GMsun, …) shared by all modules |
+| `omega_interpolation_data.npz` | Cached interpolation tables used by several utilities |
+
+### Fixes relative to `ring_pterm_vectorized.ipynb`
+
+`utils_vectorized_fixed.py` corrects two physics issues found in `utils_vectorized.py`:
+
+1. **`omega_p0` consistency** — the pulsar-term reference frequency is now computed analytically in *both* `get_delay_batch` (phase-free branch) and `compute_pulsar_phases_batch`, removing a subtle mismatch.
+2. **`tref` parameter** — a reference-time argument has been threaded through `get_delay_batch`, `computer_snr2_batch`, and `compute_total_fisher`, restoring full parity with the `CW_Signal` class in `utils.py`.
+
+Figures produced by the fixed notebook are saved to `outputs_fixed/`.
+
+---
+
+## Studies in the Notebook
+
+The notebook is organized as a series of self-contained studies.
+
+| Study | Title | What it explores |
+|-------|-------|------------------|
+| 0 | Single Ring Configuration | Places a ring of pulsars at a fixed angular radius around the GW source; plots antennapattern geometry, timing residuals, and the Fisher-matrix localization ellipse. |
+| 1 | Sky Localization vs Pulsar–Source Separation | Sweeps angular radius of the pulsar ring; tracks how ΔΩ varies with separation. |
+| 1a | Distance Uncertainty Dependence | Same sweep for multiple distance-precision levels (fractions of the GW wavelength). |
+| 2 | All-Sky Localization Map | Fixes the pulsar ring around the North Pole, sweeps GW source across the sky (HEALPix), producing all-sky ΔΩ maps. |
+| 3 | Linked vs Decoupled Phase | Compares localization when the pulsar-term phase is physically determined ("linked / interferometric") vs treated as a free parameter ("decoupled"). |
+| 4 | Distance Uncertainty — Linked Case | Sweeps distance uncertainty in the linked regime to map the transition from precise to uninformative distance knowledge. |
+| 5 | Distance Uncertainty — Decoupled Case | Same sweep under the decoupled regime. |
+| 5b | Chirp Mass Sweep | Keeps distance uncertainty fixed, sweeps chirp mass to probe how binary evolution affects pulsar-term contributions. |
+
+Additional sections cover **numerical stability assessment** (antenna-pattern singularity protection, arccos clamping), **Schur-complement marginalization** details, and **memory profiling / scalability** strategies for >100 pulsars.
+
+---
 
 ## Project Structure
 
 ### Core Modules
 
-- `constants.py` – numerical constants (speed of light, parsec, solar mass, etc.) shared across modules.
-- `deterministic.py` – builders for CW and fuzzy-dark-matter deterministic signal blocks that plug into Enterprise PTA model pipelines.
-- `utils.py` – assorted helper routines for waveform generation, interpolation, and PTA-specific math.
-- `utils_vectorized.py` – JAX-optimized vectorized versions of utility functions with batched operations via `PulsarBatch` class.
-- `omega_interpolation_data.npz` – cached interpolation tables consumed by the utilities.
-- `outputs/` – checkpointed figures and intermediate results produced by the notebooks.
+| Module | Description |
+|--------|-------------|
+| `constants.py` | Physical constants (speed of light, parsec, solar mass, etc.) |
+| `deterministic.py` | Enterprise-compatible CW and fuzzy-dark-matter deterministic signal blocks |
+| `utils.py` | Single-pulsar `CW_Signal` class, `compute_fisher`, waveform helpers |
+| `utils_vectorized.py` | First JAX-vectorized rewrite (`PulsarBatch`, `get_delay_batch`, etc.) |
+| `utils_vectorized_fixed.py` | **Current production module** — fixes described above |
 
 ### Notebooks
 
-The notebooks form a progression from initial exploration to optimized analysis:
-
-#### Primary Analysis Notebooks (Ring Studies)
-
 | Notebook | Purpose | Status |
 |----------|---------|--------|
-| `ring.ipynb` | Initial exploration of angular resolution vs pulsar proximity to GW source. Uses basic Fisher matrix approach without pulsar-term effects. | Baseline |
-| `ring_pterm.ipynb` | Extends `ring.ipynb` to include pulsar-term contributions to the timing residual model. Explores how pulsar distance uncertainty affects sky localization. | Extended |
-| `ring_pterm_streamlined.ipynb` | Refactored version with cleaner code structure, HEALPix all-sky maps, and systematic comparison of linked (known phase) vs decoupled (unknown phase) regimes. | Refactored |
-| `ring_pterm_optimized.ipynb` | Adds JAX JIT compilation to `ring_pterm_streamlined.ipynb` for faster Fisher matrix calculations while keeping the same analysis structure. | JIT-enabled |
-| `ring_pterm_vectorized.ipynb` | **Most advanced version.** Fully vectorized across pulsars using JAX vmap with `PulsarBatch` PyTree. Includes numerical stability improvements, flexible `n_psrs` configuration, and memory profiling for scalability to 100+ pulsars. | Production |
-
-**Recommended workflow**: Start with `ring_pterm_vectorized.ipynb` for production analysis. Refer to earlier notebooks to understand the conceptual progression.
+| `ring_pterm_vectorized_fixed.ipynb` | **Production analysis** — studies listed above, with corrected physics | ✅ Current |
+| `ring_pterm_vectorized.ipynb` | Prior vectorized analysis (superseded by _fixed) | Archived |
+| `ring_pterm.ipynb` | Early pulsar-term exploration, per-pulsar `CW_Signal` loop | Legacy |
+| `ring_pterm_streamlined.ipynb` | Refactored version with HEALPix maps, linked vs decoupled comparison | Legacy |
+| `ring_pterm_optimized.ipynb` | Adds JIT compilation to the streamlined notebook | Legacy |
+| `ring.ipynb` | Original ring study without pulsar-term effects | Baseline |
 
 #### Validation & Test Notebooks
 
 | Notebook | Purpose |
 |----------|---------|
-| `tests.ipynb` | General unit tests for utility functions, Fisher matrix calculations, and CW signal models. |
-| `signal_tests.ipynb` | Validates CW signal generation by comparing face-on vs edge-on binary orientations and checking waveform properties. |
+| `tests.ipynb` | Unit tests for utility functions and Fisher calculations |
+| `signal_tests.ipynb` | Waveform validation (face-on vs edge-on, signal properties) |
 
-## Getting Started
+### Output Directories
 
-1. **Create the environment**
+| Directory | Contents |
+|-----------|----------|
+| `outputs_fixed/` | Figures from `ring_pterm_vectorized_fixed.ipynb` |
+| `outputs/` | Figures from earlier notebook versions |
+
+---
+
+## Environment Setup
+
+1. **Create a conda environment**
 
    ```bash
    conda create -n jax-calc python=3.11 jax jaxlib -c conda-forge
+   conda activate jax-calc
    ```
 
-   Activate with `conda activate jax-calc`, then enable 64-bit precision by exporting `JAX_ENABLE_X64=1` or calling `jax.config.update("jax_enable_x64", True)` inside notebooks.
+2. **Enable 64-bit precision**
 
-2. **Install dependencies**
+   ```bash
+   export JAX_ENABLE_X64=1
+   ```
 
-   Install Enterprise PTA and any extra packages the notebooks rely on (e.g., `matplotlib`, `tqdm`) either via pip or conda once the environment is active.
+   Or at the top of a notebook: `jax.config.update("jax_enable_x64", True)`.
 
-3. **Open the notebooks**
+3. **Install extra dependencies**
 
-   Launch JupyterLab or VS Code and run the notebooks to reproduce the analyses. Many notebooks expect the `omega_interpolation_data.npz` file to stay in place.
+   ```bash
+   pip install matplotlib tqdm healpy scipy
+   ```
 
-## Typical Workflow
+   For `deterministic.py`, the [Enterprise PTA](https://github.com/nanograv/enterprise) package is also required.
 
-1. Assemble a deterministic signal model with `deterministic.cw_block_circ` or `deterministic.cw_block_ecc`.
-2. Combine blocks with additional PTA noise models inside Enterprise to build a full timing model.
-3. Evaluate Fisher matrices and waveform residuals either programmatically or via the provided notebooks.
-4. Export plots or tables to `outputs/` for downstream use.
+4. **Run the notebook**
+
+   Open `ring_pterm_vectorized_fixed.ipynb` in JupyterLab or VS Code and execute all cells.
 
 ## Contributing
 
-Issues and pull requests are welcome. Please open an issue describing proposed changes or feature requests before submitting larger patches.
+Issues and pull requests are welcome. Please open an issue describing proposed changes before submitting larger patches.
 
 ## License
 
