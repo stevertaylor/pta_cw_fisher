@@ -50,6 +50,26 @@ Additional sections cover **numerical stability assessment** (antenna-pattern si
 
 ---
 
+## Referee-Response Studies
+
+`ring_pterm_referee.ipynb` collects the additional analyses prepared in response to the referee. It builds on the production module (via `utils_referee.py`, which wraps `utils_vectorized_fixed.py`) and does **not** modify any of the paper's production figures.
+
+| Study | What it explores |
+|-------|------------------|
+| R1 | Fig.-7 analog with the **mean pulsar-configuration distance** $L_0$ varied over {0.25, 0.5, 1, 2, 4} kpc (the paper fixes $L_0 = 1$ kpc), for the phase-linked and phase-decoupled models. |
+| R2 | A realistic **NG15-like array** — 67 pulsars with real sky positions (Galactic-plane-concentrated), per-pulsar distances and NANOGrav CW-search distance priors, total-rms noise, and differing baselines — used for (R2a) a distance-precision sweep and (R2b) all-sky ΔΩ maps in equatorial coordinates. |
+
+It relies on:
+
+| File | Role |
+|------|------|
+| `utils_referee.py` | Generalized ring/array machinery, SNR-calibrated Fisher, and sky-map helpers, built on `utils_vectorized_fixed.py` |
+| `data/ng15_psrs.csv` | NG15-like array summary — positions, distance priors, total-rms noise, and baselines (provenance in the file header) |
+
+Each configuration is calibrated to SNR = 10 exactly as in the paper; figures are written to `outputs_referee/`. This notebook additionally uses `astropy` (Galactic-coordinate transforms).
+
+---
+
 ## Project Structure
 
 ### Core Modules
@@ -61,12 +81,14 @@ Additional sections cover **numerical stability assessment** (antenna-pattern si
 | `utils.py` | Single-pulsar `CW_Signal` class, `compute_fisher`, waveform helpers |
 | `utils_vectorized.py` | First JAX-vectorized rewrite (`PulsarBatch`, `get_delay_batch`, etc.) |
 | `utils_vectorized_fixed.py` | **Current production module** — fixes described above |
+| `utils_referee.py` | Referee-response machinery — generalizes the production routines to arbitrary configuration distance and to heterogeneous (NG15-like) arrays; imported by `ring_pterm_referee.ipynb` |
 
 ### Notebooks
 
 | Notebook | Purpose | Status |
 |----------|---------|--------|
 | `ring_pterm_vectorized_fixed.ipynb` | **Production analysis** — studies listed above, with corrected physics | ✅ Current |
+| `ring_pterm_referee.ipynb` | **Referee-response analyses** — varying configuration distance; realistic NG15-like array | ✅ Current |
 | `ring_pterm_vectorized.ipynb` | Prior vectorized analysis (superseded by _fixed) | Archived |
 | `ring_pterm.ipynb` | Early pulsar-term exploration, per-pulsar `CW_Signal` loop | Legacy |
 | `ring_pterm_streamlined.ipynb` | Refactored version with HEALPix maps, linked vs decoupled comparison | Legacy |
@@ -85,6 +107,7 @@ Additional sections cover **numerical stability assessment** (antenna-pattern si
 | Directory | Contents |
 |-----------|----------|
 | `outputs_fixed/` | Figures from `ring_pterm_vectorized_fixed.ipynb` |
+| `outputs_referee/` | Figures from `ring_pterm_referee.ipynb` |
 | `outputs/` | Figures from earlier notebook versions |
 
 ---
@@ -109,7 +132,7 @@ Additional sections cover **numerical stability assessment** (antenna-pattern si
 3. **Install extra dependencies**
 
    ```bash
-   pip install matplotlib tqdm healpy scipy
+   pip install matplotlib tqdm healpy scipy astropy
    ```
 
    For `deterministic.py`, the [Enterprise PTA](https://github.com/nanograv/enterprise) package is also required.
